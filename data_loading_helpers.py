@@ -254,8 +254,8 @@ def extract_word_level_data(data_container, word_objects, eeg_float_resolution =
         #print("Only available objects for the sentence '{}' are {}.".format(sentence, available_objects))
     #word_level_data["word_reading_order"] = extract_word_order_from_fixations(fixations_order_per_word)
     word_reading_order = extract_word_order_from_fixations(fixations_order_per_word)
-    for word_idx in word_reading_order:
-        word_level_data[word_idx]['reading_order'] = word_idx
+    for idx, word_idx in enumerate(word_reading_order):
+        word_level_data[word_idx]['reading_order'] = idx
 
     return word_level_data#, word_reading_order
 
