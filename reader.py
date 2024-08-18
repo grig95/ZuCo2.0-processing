@@ -1,4 +1,9 @@
 import os
+import numpy as np
+import h5py
+import pandas as pd
+from tqdm import tqdm
+import data_loading_helpers as dh
 
 def get_subject(filename):
     fis = os.path.basename(filename)
@@ -8,8 +13,15 @@ def get_task(filename):
     fis = os.path.basename(filename)
     return fis.split("_")[1].replace(".mat", '')
 
-
-def get_files(rootdir = 'task1 - NR/Matlab files/', task = 'NR'):
+def get_files(task = 'NR'):
+    if task == 'NR' or task == 1:
+        task = 'NR'
+        rootdir = 'task1 - NR/Matlab files/'
+    elif task == 'TSR' or task == 2:
+        task = 'TSR'
+        rootdir = 'task2 - TSR/Matlab files/'
+    else:
+        return None
     all_files = []
     for file in os.listdir(rootdir):
         if file.endswith(task+".mat"):
@@ -21,18 +33,6 @@ def get_files(rootdir = 'task1 - NR/Matlab files/', task = 'NR'):
             all_files.append(file_path)
     return all_files
 
-all_files = get_files()
-print(all_files)
-            
-
-import numpy as np
-import h5py
-import pandas as pd
-from tqdm import tqdm
-
-import data_loading_helpers as dh
-
-#print('number of sentences: ', len(rawData))
 
 def get_data_from_file(file, columns=['content', 'word_idx', 'FFD', 'GD', 'GPT', 'TRT', 'nFix', 'reading_order']):
     subject = get_subject(file)
@@ -87,12 +87,17 @@ def get_data_from_file(file, columns=['content', 'word_idx', 'FFD', 'GD', 'GPT',
 
 
 
-#columns=['content', 'FFD', 'GD', 'GPT', 'TRT', 'nFix', 'reading_order']
-all_items = []
-for file in all_files:
-    all_items.append(pd.DataFrame(get_data_from_file(file)))
+if __name__ == '__main__':
+    all_files = get_files()
+    print(all_files)
+    #print('number of sentences: ', len(rawData))
+    
+    #columns=['content', 'FFD', 'GD', 'GPT', 'TRT', 'nFix', 'reading_order']
+    all_items = []
+    for file in all_files:
+        all_items.append(pd.DataFrame(get_data_from_file(file)))
 
 
-df = pd.concat(all_items, ignore_index=True)
+    df = pd.concat(all_items, ignore_index=True)
 
-df.to_csv("data.tsv", sep='\t')
+    df.to_csv("data.tsv", sep='\t')
