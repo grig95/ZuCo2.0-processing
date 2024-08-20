@@ -5,6 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 import data_loading_helpers as dh
 
+EXTRACTED_DATA_PATH = './'
 NR_FILES_PATH = 'task1 - NR/Matlab files/'
 TSR_FILES_PATH = 'task2 - TSR/Matlab files/'
 
@@ -158,7 +159,7 @@ if __name__ == '__main__':
     all_files = get_files()
 
     # Setting up extraction folder
-    extraction_path = 'extracted_data_'+task
+    extraction_path = EXTRACTED_DATA_PATH+'extracted_data_'+task
     if not os.path.exists(extraction_path):
         os.mkdir(extraction_path)
 
