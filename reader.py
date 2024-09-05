@@ -12,6 +12,14 @@ TSR_FILES_PATH = 'task2 - TSR/Matlab files/'
 EEG_CHANNEL_COUNT = 105
 MISSING_DATA_SYMBOL = -1
 
+SENTENCE_LEVEL_MEANS = ['mean_a1', 'mean_a2', 'mean_b1', 'mean_b2', 'mean_g1', 'mean_g2', 'mean_t1', 'mean_t2']
+WORD_LEVEL_FEATURES = ['FFD_a1', 'FFD_a2', 'FFD_b1', 'FFD_b2', 'FFD_g1', 'FFD_g2', 'FFD_t1', 'FFD_t2',
+                        'GD_a1', 'GD_a2', 'GD_b1', 'GD_b2', 'GD_g1', 'GD_g2', 'GD_t1', 'GD_t2',
+                        'GPT_a1', 'GPT_a2', 'GPT_b1', 'GPT_b2', 'GPT_g1', 'GPT_g2', 'GPT_t1', 'GPT_t2',
+                        'SFD_a1', 'SFD_a2', 'SFD_b1', 'SFD_b2', 'SFD_g1', 'SFD_g2', 'SFD_t1', 'SFD_t2',
+                        'TRT_a1', 'TRT_a2', 'TRT_b1', 'TRT_b2', 'TRT_g1', 'TRT_g2', 'TRT_t1', 'TRT_t2'
+                        ]
+
 
 def get_subject(filename):
     fis = os.path.basename(filename)
@@ -100,13 +108,8 @@ def get_eeg_data_from_file(file):
     f=h5py.File(file)
     sentence_data=f['sentenceData']
     wordData = sentence_data['word']
-    means=['mean_a1', 'mean_a2', 'mean_b1', 'mean_b2', 'mean_g1', 'mean_g2', 'mean_t1', 'mean_t2']
-    word_level_features = ['FFD_a1', 'FFD_a2', 'FFD_b1', 'FFD_b2', 'FFD_g1', 'FFD_g2', 'FFD_t1', 'FFD_t2',
-                           'GD_a1', 'GD_a2', 'GD_b1', 'GD_b2', 'GD_g1', 'GD_g2', 'GD_t1', 'GD_t2',
-                           'GPT_a1', 'GPT_a2', 'GPT_b1', 'GPT_b2', 'GPT_g1', 'GPT_g2', 'GPT_t1', 'GPT_t2',
-                           'SFD_a1', 'SFD_a2', 'SFD_b1', 'SFD_b2', 'SFD_g1', 'SFD_g2', 'SFD_t1', 'SFD_t2',
-                           'TRT_a1', 'TRT_a2', 'TRT_b1', 'TRT_b2', 'TRT_g1', 'TRT_g2', 'TRT_t1', 'TRT_t2'
-                           ]
+    means = SENTENCE_LEVEL_MEANS
+    word_level_features = WORD_LEVEL_FEATURES
     data = {}
     for sent_idx in tqdm(range(len(wordData))):
         try:
@@ -122,7 +125,7 @@ def get_eeg_data_from_file(file):
         data[sent_idx]['means']['subject'] = [subject for _ in range(EEG_CHANNEL_COUNT)]
         data[sent_idx]['means']['sentence_id'] = [sent_idx for _ in range(EEG_CHANNEL_COUNT)]
         for mean in means:
-            data[sent_idx]['means'][mean] = np.squeeze(f[sentence_data[mean][0][0]])
+            data[sent_idx]['means'][mean] = np.squeeze(f[sentence_data[mean][sent_idx][0]])
         # getting word data
         data[sent_idx]['word_data'] = {}
         for word_idx in tqdm(range(len( f[wordData[sent_idx][0] ]['content'] ))):
