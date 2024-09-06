@@ -4,6 +4,9 @@ import h5py
 import pandas as pd
 from tqdm import tqdm
 import data_loading_helpers as dh
+import multiprocessing as mp
+
+MAX_SIMULTANEOUS_SUBJECTS_TO_PROCESS = 5
 
 EXTRACTED_DATA_PATH = './'
 NR_FILES_PATH = 'task1 - NR/Matlab files/'
@@ -149,6 +152,32 @@ def get_eeg_data_from_file(file):
     return data
 
 
+def process_file(file, eeg_path):
+    subject = get_subject(file)
+    eeg_data = get_eeg_data_from_file(file)
+    subject_path = eeg_path+'/'+subject
+    if not os.path.exists(subject_path):
+        os.mkdir(subject_path)
+    for sent_idx in eeg_data.keys():
+        sentence_path = subject_path+'/'+str(sent_idx)
+        if not os.path.exists(sentence_path):
+            os.mkdir(sentence_path)
+        try:
+            means_df = pd.DataFrame(eeg_data[sent_idx]['means'])
+            means_df.to_csv(sentence_path+'/means.tsv', sep='\t')
+        except Exception as e:
+            msg = f'Extraction error at means for subject {subject}, sentence {sent_idx}:\n{e}\n'
+            print(msg)
+            #exception_log.write(msg)
+        for word_idx in eeg_data[sent_idx]['word_data'].keys():
+            try:
+                word_df = pd.DataFrame(eeg_data[sent_idx]['word_data'][word_idx])
+                word_df.to_csv(sentence_path+'/word_'+str(word_idx)+'.tsv', sep='\t')
+            except Exception as e:
+                msg = f'Extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
+                print(msg)
+                #exception_log.write(msg)
+
 
 
 if __name__ == '__main__':
@@ -178,28 +207,16 @@ if __name__ == '__main__':
     eeg_path = extraction_path+'/eeg_data'
     if not os.path.exists(eeg_path):
         os.mkdir(eeg_path)
-    for file in tqdm(all_files):
-        subject = get_subject(file)
-        eeg_data = get_eeg_data_from_file(file)
-        subject_path = eeg_path+'/'+subject
-        if not os.path.exists(subject_path):
-            os.mkdir(subject_path)
-        for sent_idx in eeg_data.keys():
-            sentence_path = subject_path+'/'+str(sent_idx)
-            if not os.path.exists(sentence_path):
-                os.mkdir(sentence_path)
-            try:
-                means_df = pd.DataFrame(eeg_data[sent_idx]['means'])
-                means_df.to_csv(sentence_path+'/means.tsv', sep='\t')
-            except Exception as e:
-                msg = f'Extraction error at means for subject {subject}, sentence {sent_idx}:\n{e}\n'
-                print(msg)
-                exception_log.write(msg)
-            for word_idx in eeg_data[sent_idx]['word_data'].keys():
-                try:
-                    word_df = pd.DataFrame(eeg_data[sent_idx]['word_data'][word_idx])
-                    word_df.to_csv(sentence_path+'/word_'+str(word_idx)+'.tsv', sep='\t')
-                except Exception as e:
-                    msg = f'Extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
-                    print(msg)
-                    exception_log.write(msg)
+    procs = []
+    for file in all_files:
+        procs.append(mp.Process(target=process_file, args=(file, eeg_path), name=get_subject(file)))
+    index = 0
+    while index < len(procs):
+        batch_size = min(len(procs)-index, MAX_SIMULTANEOUS_SUBJECTS_TO_PROCESS)
+        for i in range(batch_size):
+            procs[index+i].start()
+            print(f'Processing data for subject {procs[index+i].name}')
+        for i in range(batch_size):
+            procs[index+i].join()
+            print(f'Finished processing data for subject {procs[index+i].name}')
+        index+=batch_size
