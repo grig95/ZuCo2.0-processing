@@ -138,6 +138,7 @@ def get_eeg_data_from_file(file):
             data[sent_idx]['word_data'][word_idx]['subject'] = [subject for _ in range(EEG_CHANNEL_COUNT)]
             data[sent_idx]['word_data'][word_idx]['sentence_id'] = [sent_idx for _ in range(EEG_CHANNEL_COUNT)]
             data[sent_idx]['word_data'][word_idx]['word_id'] = [word_idx for _ in range(EEG_CHANNEL_COUNT)]
+            # getting et related eeg features
             for feature in word_level_features:
                 # it would seem some sentences have missing features (ex: subject YHS, sentence 154 has no SFD-related feature)
                 if feature in list(f[ wordData[sent_idx][0] ].keys()):
@@ -148,7 +149,14 @@ def get_eeg_data_from_file(file):
                         data[sent_idx]['word_data'][word_idx][feature] = [MISSING_DATA_SYMBOL for _ in range(EEG_CHANNEL_COUNT)] # marking empty features
                 else:
                     data[sent_idx]['word_data'][word_idx][feature] = [MISSING_DATA_SYMBOL for _ in range(EEG_CHANNEL_COUNT)] # marking empty features
-                
+            # getting raw eeg data
+            if 'rawEEG' in list(f[wordData[sent_idx][0]].keys()): # again, some sentences miss the rawEEG data
+                if len( f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]].shape ) == 2: # some words have invalid data (probably the ones that were never fixated)
+                    data[sent_idx]['word_data'][word_idx]['raw_eeg'] = f[ f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]] [0][0] ] [:]
+                else:
+                    data[sent_idx]['word_data'][word_idx]['raw_eeg'] = np.array([[MISSING_DATA_SYMBOL for j in range(EEG_CHANNEL_COUNT)]] , dtype=np.dtype('float64')) # marking missing data
+            else:
+                data[sent_idx]['word_data'][word_idx]['raw_eeg'] = np.array([[MISSING_DATA_SYMBOL for j in range(EEG_CHANNEL_COUNT)]] , dtype=np.dtype('float64')) # marking missing data
     return data
 
 
@@ -171,10 +179,18 @@ def process_file(file, eeg_path):
             #exception_log.write(msg)
         for word_idx in eeg_data[sent_idx]['word_data'].keys():
             try:
-                word_df = pd.DataFrame(eeg_data[sent_idx]['word_data'][word_idx])
+                word_df = pd.DataFrame({key: value for (key, value) in eeg_data[sent_idx]['word_data'][word_idx].items() if key not in ['raw_eeg']})
                 word_df.to_csv(sentence_path+'/word_'+str(word_idx)+'.tsv', sep='\t')
             except Exception as e:
                 msg = f'Extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
+                print(msg)
+                #exception_log.write(msg)
+            # saving raw eeg data
+            try:
+                raw_df = pd.DataFrame(eeg_data[sent_idx]['word_data'][word_idx]['raw_eeg'])
+                raw_df.to_csv(sentence_path+'/word_'+str(word_idx)+'_raw.tsv', sep='\t')
+            except Exception as e:
+                msg = f'Raw EEG extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
                 print(msg)
                 #exception_log.write(msg)
 
