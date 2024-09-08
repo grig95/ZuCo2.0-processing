@@ -16,12 +16,13 @@ EEG_CHANNEL_COUNT = 105
 MISSING_DATA_SYMBOL = -1
 
 SENTENCE_LEVEL_MEANS = ['mean_a1', 'mean_a2', 'mean_b1', 'mean_b2', 'mean_g1', 'mean_g2', 'mean_t1', 'mean_t2']
-WORD_LEVEL_FEATURES = ['FFD_a1', 'FFD_a2', 'FFD_b1', 'FFD_b2', 'FFD_g1', 'FFD_g2', 'FFD_t1', 'FFD_t2',
+EEG_FEATURES = ['FFD_a1', 'FFD_a2', 'FFD_b1', 'FFD_b2', 'FFD_g1', 'FFD_g2', 'FFD_t1', 'FFD_t2',
                         'GD_a1', 'GD_a2', 'GD_b1', 'GD_b2', 'GD_g1', 'GD_g2', 'GD_t1', 'GD_t2',
                         'GPT_a1', 'GPT_a2', 'GPT_b1', 'GPT_b2', 'GPT_g1', 'GPT_g2', 'GPT_t1', 'GPT_t2',
                         'SFD_a1', 'SFD_a2', 'SFD_b1', 'SFD_b2', 'SFD_g1', 'SFD_g2', 'SFD_t1', 'SFD_t2',
                         'TRT_a1', 'TRT_a2', 'TRT_b1', 'TRT_b2', 'TRT_g1', 'TRT_g2', 'TRT_t1', 'TRT_t2'
                         ]
+ET_FEATURES = ['GD', 'TRT', 'FFD', 'SFD', 'GPT']
 
 
 def get_subject(filename):
@@ -53,7 +54,11 @@ def get_files(task = 'NR'):
     return all_files
 
 
-def get_basic_data_from_file(file, columns=['content', 'word_idx', 'FFD', 'GD', 'GPT', 'TRT', 'nFix', 'reading_order']):
+def get_subjects_list():
+    return [get_subject(file) for file in get_files()]
+
+
+def get_basic_data_from_file(file, columns=['content', 'word_idx'] + ET_FEATURES + ['nFix', 'reading_order']):
     subject = get_subject(file)
     task = get_task(file)
     print('subject ', subject, ' file ', file, ' task', task)
@@ -112,7 +117,7 @@ def get_eeg_data_from_file(file):
     sentence_data=f['sentenceData']
     wordData = sentence_data['word']
     means = SENTENCE_LEVEL_MEANS
-    word_level_features = WORD_LEVEL_FEATURES
+    word_level_features = EEG_FEATURES
     data = {}
     for sent_idx in tqdm(range(len(wordData))):
         try:
@@ -154,9 +159,9 @@ def get_eeg_data_from_file(file):
                 if len( f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]].shape ) == 2: # some words have invalid data (probably the ones that were never fixated)
                     data[sent_idx]['word_data'][word_idx]['raw_eeg'] = f[ f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]] [0][0] ] [:]
                 else:
-                    data[sent_idx]['word_data'][word_idx]['raw_eeg'] = np.array([[MISSING_DATA_SYMBOL for j in range(EEG_CHANNEL_COUNT)]] , dtype=np.dtype('float64')) # marking missing data
+                    data[sent_idx]['word_data'][word_idx]['raw_eeg'] = np.array([[MISSING_DATA_SYMBOL for j in range(EEG_CHANNEL_COUNT)]] , dtype=np.float64) # marking missing data
             else:
-                data[sent_idx]['word_data'][word_idx]['raw_eeg'] = np.array([[MISSING_DATA_SYMBOL for j in range(EEG_CHANNEL_COUNT)]] , dtype=np.dtype('float64')) # marking missing data
+                data[sent_idx]['word_data'][word_idx]['raw_eeg'] = np.array([[MISSING_DATA_SYMBOL for j in range(EEG_CHANNEL_COUNT)]] , dtype=np.float64) # marking missing data
     return data
 
 
