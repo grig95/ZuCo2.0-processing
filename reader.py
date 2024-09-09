@@ -177,7 +177,7 @@ def process_file(file, eeg_path):
             os.mkdir(sentence_path)
         try:
             means_df = pd.DataFrame(eeg_data[sent_idx]['means'])
-            means_df.to_csv(sentence_path+'/means.tsv', sep='\t')
+            means_df.to_csv(sentence_path+'/means.tsv', sep='\t', index=False)
         except Exception as e:
             msg = f'Extraction error at means for subject {subject}, sentence {sent_idx}:\n{e}\n'
             print(msg)
@@ -185,7 +185,7 @@ def process_file(file, eeg_path):
         for word_idx in eeg_data[sent_idx]['word_data'].keys():
             try:
                 word_df = pd.DataFrame({key: value for (key, value) in eeg_data[sent_idx]['word_data'][word_idx].items() if key not in ['raw_eeg']})
-                word_df.to_csv(sentence_path+'/word_'+str(word_idx)+'.tsv', sep='\t')
+                word_df.to_csv(sentence_path+'/word_'+str(word_idx)+'.tsv', sep='\t', index=False)
             except Exception as e:
                 msg = f'Extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
                 print(msg)
@@ -193,7 +193,7 @@ def process_file(file, eeg_path):
             # saving raw eeg data
             try:
                 raw_df = pd.DataFrame(eeg_data[sent_idx]['word_data'][word_idx]['raw_eeg'])
-                raw_df.to_csv(sentence_path+'/word_'+str(word_idx)+'_raw.tsv', sep='\t')
+                raw_df.to_csv(sentence_path+'/word_'+str(word_idx)+'_raw.tsv', sep='\t', index=False)
             except Exception as e:
                 msg = f'Raw EEG extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
                 print(msg)
@@ -209,7 +209,7 @@ if __name__ == '__main__':
 
     exception_log = open('exception_log.txt', 'w')
 
-    all_files = get_files()
+    all_files = get_files(task)
 
     # Setting up extraction folder
     extraction_path = EXTRACTED_DATA_PATH+'extracted_data_'+task
@@ -221,7 +221,7 @@ if __name__ == '__main__':
     for file in all_files:
         all_items.append(pd.DataFrame(get_basic_data_from_file(file)))
     basic_data_df = pd.concat(all_items, ignore_index=True)
-    basic_data_df.to_csv(extraction_path+"/data.tsv", sep='\t')
+    basic_data_df.to_csv(extraction_path+"/data.tsv", sep='\t', index=False)
     print('Finished extracting basic data.')
 
     # extracting eeg data
