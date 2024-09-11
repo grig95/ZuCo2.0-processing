@@ -49,9 +49,10 @@ def get_raw_word_eeg_mean(args):
     task, subject, sentence_id, word_idx = args
     word_path = EXTRACTED_DATA_PATH + 'extracted_data_' + task + '/eeg_data/' + subject + '/' + str(sentence_id) + '/word_' + str(word_idx) + '_raw.tsv'
     word_df = pd.read_csv(word_path, sep='\t')
+    word_df.drop(columns=['fixation_idx'], inplace=True)
     eeg_array = word_df.to_numpy(dtype=np.float64)
-    if eeg_array.shape[1] != EEG_CHANNEL_COUNT: # Some words are fixated but have missing eeg data. These are marked by a [[nan]] array.
-        return None
+    #if eeg_array.shape[1] != EEG_CHANNEL_COUNT: # Some words are fixated but have missing eeg data. These are marked by a [[nan]] array.
+    #    return None
     return np.mean(eeg_array, axis=0)
 
 

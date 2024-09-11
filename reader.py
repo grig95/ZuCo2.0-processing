@@ -156,12 +156,11 @@ def get_eeg_data_from_file(file):
                     data[sent_idx]['word_data'][word_idx][feature] = [MISSING_DATA_SYMBOL for _ in range(EEG_CHANNEL_COUNT)] # marking empty features
             # getting raw eeg data
             if 'rawEEG' in list(f[wordData[sent_idx][0]].keys()): # again, some sentences miss the rawEEG data
-                if len( f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]].shape ) == 2: # some words have invalid data (probably the ones that were never fixated)
-                    data[sent_idx]['word_data'][word_idx]['raw_eeg'] = f[ f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]] [0][0] ] [:]
-                else:
-                    data[sent_idx]['word_data'][word_idx]['raw_eeg'] = np.array([[MISSING_DATA_SYMBOL for j in range(EEG_CHANNEL_COUNT)]] , dtype=np.float64) # marking missing data
-            else:
-                data[sent_idx]['word_data'][word_idx]['raw_eeg'] = np.array([[MISSING_DATA_SYMBOL for j in range(EEG_CHANNEL_COUNT)]] , dtype=np.float64) # marking missing data
+                if len( f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]].shape ) == 2: # check if the word was fixated
+                    nFixations = int(f[ f[ wordData[sent_idx][0] ]['nFixations'] [word_idx][0] ] [:] [0][0])
+                    data[sent_idx]['word_data'][word_idx]['raw_eeg'] = {}
+                    for fixation_idx in range(nFixations):
+                        data[sent_idx]['word_data'][word_idx]['raw_eeg'][fixation_idx] = f[ f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]] [fixation_idx][0] ] [:]
     return data
 
 
@@ -191,13 +190,24 @@ def process_file(file, eeg_path):
                 print(msg)
                 #exception_log.write(msg)
             # saving raw eeg data
-            try:
-                raw_df = pd.DataFrame(eeg_data[sent_idx]['word_data'][word_idx]['raw_eeg'])
-                raw_df.to_csv(sentence_path+'/word_'+str(word_idx)+'_raw.tsv', sep='\t', index=False)
-            except Exception as e:
-                msg = f'Raw EEG extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
-                print(msg)
-                #exception_log.write(msg)
+            if 'raw_eeg' in eeg_data[sent_idx]['word_data'][word_idx].keys():
+                try:
+                    fixation_arrays_list = []
+                    for fixation_idx in sorted(eeg_data[sent_idx]['word_data'][word_idx]['raw_eeg'].keys()):
+                        fixation_array = eeg_data[sent_idx]['word_data'][word_idx]['raw_eeg'][fixation_idx]
+                        if fixation_array.shape[1] != EEG_CHANNEL_COUNT: # invalid data, most likely of the form [[nan]], marking an existing fixation with missing eeg data (?)
+                            continue
+                        fixation_array = np.pad(fixation_array, ((0, 0),(0, 1)), constant_values=fixation_idx)
+                        fixation_arrays_list.append(fixation_array)
+                    if len(fixation_arrays_list)>0:
+                        full_array = np.concatenate(fixation_arrays_list, axis=0)
+                        raw_df = pd.DataFrame(full_array)
+                    raw_df.rename(columns={EEG_CHANNEL_COUNT: 'fixation_idx'}, inplace=True)
+                    raw_df.to_csv(sentence_path+'/word_'+str(word_idx)+'_raw.tsv', sep='\t', index=False)
+                except Exception as e:
+                    msg = f'Raw EEG extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
+                    print(msg)
+                    #exception_log.write(msg)
 
 
 
