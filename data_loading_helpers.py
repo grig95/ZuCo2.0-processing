@@ -145,6 +145,7 @@ def extract_word_level_data(data_container, word_objects, eeg_float_resolution =
         etData = word_objects['rawET']
 
         ffdData = word_objects['FFD']
+        sfdData = word_objects['SFD'] if 'SFD' in word_objects else [None for _ in range(len(ffdData))] # some sentences have no SFD data
         gdData = word_objects['GD']
         gptData = word_objects['GPT']
         trtData = word_objects['TRT']
@@ -166,10 +167,10 @@ def extract_word_level_data(data_container, word_objects, eeg_float_resolution =
 
         assert len(contentData) == len(etData) == len(rawData), "different amounts of different data!!"
 
-        zipped_data = zip(rawData, etData, contentData, ffdData, gdData, gptData, trtData, nFixData, fixPositions, trt_t1Data, trt_t2Data, trt_a1Data, trt_a2Data, trt_b1Data, trt_b2Data, trt_g1Data, trt_g2Data)
+        zipped_data = zip(rawData, etData, contentData, ffdData, sfdData, gdData, gptData, trtData, nFixData, fixPositions, trt_t1Data, trt_t2Data, trt_a1Data, trt_a2Data, trt_b1Data, trt_b2Data, trt_g1Data, trt_g2Data)
         word_level_data = {}
         word_idx = 0
-        for raw_eegs_obj, ets_obj, word_obj, ffd, gd, gpt, trt, nFix, fixPos, trt_t1, trt_t2, trt_a1, trt_a2, trt_b1, trt_b2, trt_g1, trt_g2 in zipped_data:
+        for raw_eegs_obj, ets_obj, word_obj, ffd, sfd, gd, gpt, trt, nFix, fixPos, trt_t1, trt_t2, trt_a1, trt_a2, trt_b1, trt_b2, trt_g1, trt_g2 in zipped_data:
             word_string = load_matlab_string(data_container[word_obj[0]])
             #if is_real_word(word_string):
             data_dict = {}
@@ -177,6 +178,7 @@ def extract_word_level_data(data_container, word_objects, eeg_float_resolution =
             #data_dict["ICA_EEG"] = extract_all_fixations(data_container, ica_eegs_obj[0], eeg_float_resolution)
             data_dict["RAW_ET"] = extract_all_fixations(data_container, ets_obj[0], np.float32)
             data_dict["FFD"] = data_container[ffd[0]][()][0, 0] if len(data_container[ffd[0]][()].shape) == 2 else None
+            data_dict["SFD"] = data_container[sfd[0]][()][0, 0] if sfd is not None and len(data_container[sfd[0]][()].shape) == 2 else None
             data_dict["GD"] = data_container[gd[0]][()][0, 0] if len(data_container[gd[0]][()].shape) == 2 else None
             data_dict["GPT"] = data_container[gpt[0]][()][0, 0] if len(data_container[gpt[0]][()].shape) == 2 else None
             data_dict["TRT"] = data_container[trt[0]][()][0, 0] if len(data_container[trt[0]][()].shape) == 2 else None
@@ -235,6 +237,7 @@ def extract_word_level_data(data_container, word_objects, eeg_float_resolution =
             data_dict["ICA_EEG"] = []
             data_dict["RAW_ET"] = []
             data_dict["FFD"] = None
+            data_dict['SFD'] = None
             data_dict["GD"] = None
             data_dict["GPT"] = None
             data_dict["TRT"] = None

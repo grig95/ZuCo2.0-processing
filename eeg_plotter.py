@@ -51,8 +51,8 @@ def get_raw_word_eeg_mean(args):
     word_df = pd.read_csv(word_path, sep='\t')
     word_df.drop(columns=['fixation_idx'], inplace=True)
     eeg_array = word_df.to_numpy(dtype=np.float64)
-    #if eeg_array.shape[1] != EEG_CHANNEL_COUNT: # Some words are fixated but have missing eeg data. These are marked by a [[nan]] array.
-    #    return None
+    if eeg_array.shape[1] != EEG_CHANNEL_COUNT: # Some words are fixated but have missing eeg data. These are marked by a [[nan]] array.
+        return None
     return np.mean(eeg_array, axis=0)
 
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
         task = input('Plot for which task? "NR" or "TSR":\n')
 
     et_feature = 'none'
-    while et_feature not in ET_FEATURES+['all'] and et_feature!='SFD': # TODO: remove the sfd part once data_loading_helpers.extract_word_level_data is modified to fetch it
+    while et_feature not in ET_FEATURES+['all']:
         et_feature = input(f'Plot for which feature? One of {ET_FEATURES+["all"]}:\n')
     
     subject = 'none'
@@ -109,12 +109,11 @@ if __name__ == '__main__':
                 print(f'Finished plotting for subject {sub}...')
         else:
             for feature in ET_FEATURES:
-                if feature != 'SFD': # TODO: remove the sfd part once data_loading_helpers.extract_word_level_data is modified to fetch it
-                    print(f'Plotting feature {feature} for all subjects. Existing plots will be overriden. Plots will not be automatically displayed in this mode.')
-                    for sub in subject_list:
-                        print(f'Plotting for subject {sub}...')
-                        generate_plots_for_subject(task, sub, feature)
-                        print(f'Finished plotting for subject {sub}...')
+                print(f'Plotting feature {feature} for all subjects. Existing plots will be overriden. Plots will not be automatically displayed in this mode.')
+                for sub in subject_list:
+                    print(f'Plotting for subject {sub}...')
+                    generate_plots_for_subject(task, sub, feature)
+                    print(f'Finished plotting for subject {sub}...')
         print('Plots saved. To view them run this script and pick a single subject.')
     else:
         print(f'Plotting feature {et_feature} for subject {subject}. Plot displaying not yet supported, please check the files.')
