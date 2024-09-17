@@ -48,11 +48,11 @@ def get_evoked_for_eeg_data(eeg_data):
 def get_raw_word_eeg_mean(args):
     task, subject, sentence_id, word_idx = args
     word_path = EXTRACTED_DATA_PATH + 'extracted_data_' + task + '/eeg_data/' + subject + '/' + str(sentence_id) + '/word_' + str(word_idx) + '_raw.tsv'
+    if not os.path.exists(word_path): # Some words are fixated but have missing eeg data. These are marked in the dataset by a [[nan]] array and reader.py does not save tsv files for them.
+        return None
     word_df = pd.read_csv(word_path, sep='\t')
     word_df.drop(columns=['fixation_idx'], inplace=True)
     eeg_array = word_df.to_numpy(dtype=np.float64)
-    if eeg_array.shape[1] != EEG_CHANNEL_COUNT: # Some words are fixated but have missing eeg data. These are marked by a [[nan]] array.
-        return None
     return np.mean(eeg_array, axis=0)
 
 
@@ -86,19 +86,20 @@ def generate_plots_for_subject(task, subject, feature):
         plt.close()
 
 
-if __name__ == '__main__':
-    task = 'none'
-    while task not in ['NR', 'TSR']:
-        task = input('Plot for which task? "NR" or "TSR":\n')
+def get_input_from_list(accepted_input, msg=None):
+    if msg is None:
+        msg = f'Choose one from {accepted_input}:\n'
+    val = None
+    while val not in accepted_input:
+        val = input(msg)
+    return val
 
-    et_feature = 'none'
-    while et_feature not in ET_FEATURES+['all']:
-        et_feature = input(f'Plot for which feature? One of {ET_FEATURES+["all"]}:\n')
-    
-    subject = 'none'
+
+if __name__ == '__main__':
+    task = get_input_from_list(['NR', 'TSR'], 'Plot for which task? "NR" or "TSR":\n')
+    et_feature = get_input_from_list(ET_FEATURES+['all'], f'Plot for which feature? One of {ET_FEATURES+["all"]}:\n')
     subject_list = get_subjects_list()
-    while subject not in subject_list+['all']:
-        subject = input(f'Plot for which subject? One of {subject_list+["all"]}:\n')
+    subject = get_input_from_list(subject_list+['all'], f'Plot for which subject? One of {subject_list+["all"]}:\n')
     
     if subject == 'all':
         if et_feature != 'all':
@@ -107,6 +108,7 @@ if __name__ == '__main__':
                 print(f'Plotting for subject {sub}...')
                 generate_plots_for_subject(task, sub, et_feature)
                 print(f'Finished plotting for subject {sub}...')
+            print('Plots saved. To view them run this script and pick a single subject.')
         else:
             for feature in ET_FEATURES:
                 print(f'Plotting feature {feature} for all subjects. Existing plots will be overriden. Plots will not be automatically displayed in this mode.')
@@ -114,7 +116,7 @@ if __name__ == '__main__':
                     print(f'Plotting for subject {sub}...')
                     generate_plots_for_subject(task, sub, feature)
                     print(f'Finished plotting for subject {sub}...')
-        print('Plots saved. To view them run this script and pick a single subject.')
+            print('Plots saved. To view them run this script and pick a single subject and a single feature.')
     else:
         print(f'Plotting feature {et_feature} for subject {subject}. Plot displaying not yet supported, please check the files.')
         generate_plots_for_subject(task, subject, et_feature)

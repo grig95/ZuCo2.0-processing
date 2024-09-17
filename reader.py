@@ -202,8 +202,8 @@ def process_file(file, eeg_path):
                     if len(fixation_arrays_list)>0:
                         full_array = np.concatenate(fixation_arrays_list, axis=0)
                         raw_df = pd.DataFrame(full_array)
-                    raw_df.rename(columns={EEG_CHANNEL_COUNT: 'fixation_idx'}, inplace=True)
-                    raw_df.to_csv(sentence_path+'/word_'+str(word_idx)+'_raw.tsv', sep='\t', index=False)
+                        raw_df.rename(columns={EEG_CHANNEL_COUNT: 'fixation_idx'}, inplace=True)
+                        raw_df.to_csv(sentence_path+'/word_'+str(word_idx)+'_raw.tsv', sep='\t', index=False)
                 except Exception as e:
                     msg = f'Raw EEG extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
                     print(msg)
