@@ -42,7 +42,7 @@ def channel_fill(data, missing_channels = MISSING_CHANNELS):
     return result
 
 
-def get_evoked_for_eeg_data(eeg_data, frequency=500): # TODO: The frequency argument is only here to circumvent the weird sample count relative to TRT in the generate_trt_statistic function. Remove/do something with it once you figure out what's going on.
+def get_evoked_for_eeg_data(eeg_data, frequency=500): # TODO freq: The frequency argument is only here to circumvent the weird sample count relative to TRT in the generate_trt_statistic function. Remove/do something with it once you figure out what's going on.
     '''
     Takes in a (105,) or (n, 105) shaped numpy array and returns the associated evoked object for plotting.
     '''
@@ -135,7 +135,7 @@ def generate_trt_statistic(lower_bound, upper_bound, time_step, task):
         sum += eeg_data
         count+=1
     mean_eeg = sum/count
-    evoked = get_evoked_for_eeg_data(mean_eeg, frequency=1000) #TODO: The frequency is set here only because of the sample count weirdness. Figure it out!
+    evoked = get_evoked_for_eeg_data(mean_eeg, frequency=1000) #TODO freq: The frequency is set here only because of the sample count weirdness. Figure it out!
     fig = evoked.plot_topomap(times=[t/1000 for t in range(0, upper_bound, time_step)], show=False)
     fig.savefig(f'{EXTRACTED_DATA_PATH}extracted_data_{task}/TRT_{lower_bound}-{upper_bound}_mean.png', format='png', dpi=1200)
     plt.close()
