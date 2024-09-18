@@ -65,7 +65,7 @@ def get_raw_word_eeg(args):
     word_path = EXTRACTED_DATA_PATH + 'extracted_data_' + task + '/eeg_data/' + subject + '/' + str(sentence_id) + '/word_' + str(word_idx) + '_raw.tsv'
     if not os.path.exists(word_path): # Some words are fixated but have missing eeg data. These are marked in the dataset by a [[nan]] array and reader.py does not save tsv files for them.
         return None
-    word_df = pd.read_csv(word_path, sep='\t', usecols=lambda col: col!='fixation_idx')
+    word_df = pd.read_csv(word_path, sep='\t', usecols=lambda col: col!='sentence_relative_fix_idx')
     eeg_array = word_df.to_numpy(dtype=np.float64)
     return eeg_array
 

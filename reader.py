@@ -160,7 +160,8 @@ def get_eeg_data_from_file(file):
                     nFixations = int(f[ f[ wordData[sent_idx][0] ]['nFixations'] [word_idx][0] ] [:] [0][0])
                     data[sent_idx]['word_data'][word_idx]['raw_eeg'] = {}
                     for fixation_idx in range(nFixations):
-                        data[sent_idx]['word_data'][word_idx]['raw_eeg'][fixation_idx] = f[ f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]] [fixation_idx][0] ] [:]
+                        sent_relative_fix_idx = int(f[ f[ wordData[sent_idx][0] ] ['fixPositions'][word_idx][0] ] [fixation_idx][0]) - 1
+                        data[sent_idx]['word_data'][word_idx]['raw_eeg'][sent_relative_fix_idx] = f[ f[f[wordData[sent_idx][0]]['rawEEG'][word_idx][0]] [fixation_idx][0] ] [:]
     return data
 
 
@@ -202,7 +203,7 @@ def process_file(file, eeg_path):
                     if len(fixation_arrays_list)>0:
                         full_array = np.concatenate(fixation_arrays_list, axis=0)
                         raw_df = pd.DataFrame(full_array)
-                        raw_df.rename(columns={EEG_CHANNEL_COUNT: 'fixation_idx'}, inplace=True)
+                        raw_df.rename(columns={EEG_CHANNEL_COUNT: 'sentence_relative_fix_idx'}, inplace=True)
                         raw_df.to_csv(sentence_path+'/word_'+str(word_idx)+'_raw.tsv', sep='\t', index=False)
                 except Exception as e:
                     msg = f'Raw EEG extraction error for subject {subject}, sentence {sent_idx}, word {word_idx}:\n{e}\n'
