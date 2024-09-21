@@ -283,26 +283,19 @@ if __name__ == '__main__':
         print('Done')
     
     elif option=='5':
-        task = get_input_from_list(['NR', 'TSR'], 'Plot for which task? ("NR" or "TSR"):\n')
-        df = pd.read_csv(f'{EXTRACTED_DATA_PATH}extracted_data_{task}/data.tsv', sep='\t')
-        df = df[ ~df['content'].isna() ]
-        freqdict = {}
-        for word in df['content']:
-            freq = word_frequency(word, 'en')
-            if freq not in freqdict:
-                freqdict[freq]=1
+        data_path=f'{EXTRACTED_DATA_PATH}extracted_data_NR/data.tsv'
+        if not os.path.exists(data_path):
+            if os.path.exists(f'{EXTRACTED_DATA_PATH}extracted_data_TSR/data.tsv'):
+                data_path = f'{EXTRACTED_DATA_PATH}extracted_data_TSR/data.tsv'
             else:
-                freqdict[freq]+=1
-        xfreq = []
-        ycount = []
-        for freq in freqdict:
-            xfreq.append(freq)
-            ycount.append(freqdict[freq])
-        plt.figure(figsize=(10, 6))
-        plt.plot(xfreq, ycount, '.b') # plot with blue dots
-        plt.xlabel(f'Word frequency')
-        plt.ylabel('Number of occurences')
-        plt.title(f'Word frequency vs. word frequency occurence count graph')
+                print('Error: extracted data not found.')
+                exit()
+        df = pd.read_csv(data_path, sep='\t')
+        df = df[ ~df['content'].isna() ]
+        freqs = []
+        for word in df['content']:
+            freqs.append(word_frequency(word, 'en'))
+        plt.hist(freqs, bins=100)
         plt.show()
         plt.close()
     
