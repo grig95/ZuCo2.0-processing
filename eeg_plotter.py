@@ -6,6 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 import multiprocessing as mp
 import gc
+from wordfreq import word_frequency
 
 from reader import EXTRACTED_DATA_PATH
 from reader import EEG_CHANNEL_COUNT
@@ -17,7 +18,22 @@ from reader import get_subjects_list
 
 MISSING_CHANNELS = [126, 127, 48, 119, 17, 128, 49, 56, 63, 68, 73, 81, 88, 94, 99, 107, 113, 125, 21, 25, 32, 1, 8, 14] #ISSUE: 24 elements instead of the 23 stated in the paper
 
+LANGUAGE_CHANNELS = [33, 39, 45, 50, 27, 34, 40, 46, 51] # language-relevant channels in full electrode map indices
+
 TRT_RANGES = [(150, 15), (250, 25), (500, 50), (1000, 100)] # (upper_limit, time_step)
+
+
+def device_channel_to_data_channel(index):
+    '''
+    Takes an index between 1 and 128 corresponding to one of the channels of the GSN-HydroCel-128 system and returns  its corresponding index in the data (0-104).
+    '''
+    if index in MISSING_CHANNELS:
+        return None
+    c = 0
+    for miss in MISSING_CHANNELS:
+        if miss < index:
+            c+=1
+    return index-c-1 
 
 
 def channel_fill(data, missing_channels = MISSING_CHANNELS):
@@ -122,7 +138,7 @@ def helper_get_len_normalized_raw_eeg(args):
     return result
 
 
-def generate_trt_statistic(lower_bound, upper_bound, time_step, task):
+def generate_mean_eeg_plots_for_trt_range(lower_bound, upper_bound, time_step, task):
     high_lvl_data = pd.read_csv(EXTRACTED_DATA_PATH+'/extracted_data_'+task+'/data.tsv', sep='\t')
     relevant_df = high_lvl_data[ (high_lvl_data['TRT']>lower_bound) & (high_lvl_data['TRT']<=upper_bound) ] [ ['subject', 'sentence_id', 'word_idx'] ]
     sum = np.zeros((upper_bound, EEG_CHANNEL_COUNT), dtype=np.float64)
@@ -135,11 +151,39 @@ def generate_trt_statistic(lower_bound, upper_bound, time_step, task):
         sum += eeg_data
         count+=1
     mean_eeg = sum/count
+    plots_folder = f'{EXTRACTED_DATA_PATH}extracted_data_{task}'
     evoked = get_evoked_for_eeg_data(mean_eeg, frequency=1000) #TODO freq: The frequency is set here only because of the sample count weirdness. Figure it out!
     fig = evoked.plot_topomap(times=[t/1000 for t in range(0, upper_bound, time_step)], show=False)
-    fig.savefig(f'{EXTRACTED_DATA_PATH}extracted_data_{task}/TRT_{lower_bound}-{upper_bound}_mean.png', format='png', dpi=1200)
+    fig.savefig(f'{plots_folder}/TRT_{lower_bound}-{upper_bound}_mean_topomap.png', format='png', dpi=1200)
     plt.close()
-            
+    # constructing the plot for the language relevant electrodes
+    picks = [f'E{c}' for c in LANGUAGE_CHANNELS]
+    times = evoked.times
+    data = evoked.copy().pick(picks).data
+    plt.figure(figsize=(10, 6))
+    for i, channel in enumerate(picks):
+        plt.plot(times, data[i, :], label=channel)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Amplitude (V)')
+    plt.title(f'EEG Data from Channels: {", ".join(picks)}')
+    plt.axvline(0, color='black', linestyle='--')  # Add vertical line at 0s (stimulus onset)
+    plt.legend(loc='upper right')
+    plt.savefig(f'{plots_folder}/TRT_{lower_bound}-{upper_bound}_mean_langchan.png', format='png', dpi=1200)
+    plt.close()
+
+
+def helper_get_eeg_mean_data_in_trt_range_for_word(args):
+    word, task, subject, sentence_id, word_idx, lower_bound, upper_bound = args
+    eeg_path = f'{EXTRACTED_DATA_PATH}extracted_data_{task}/eeg_data/{subject}/{sentence_id}/word_{word_idx}_raw.tsv'
+    if not os.path.exists(eeg_path):
+        return None
+    eeg_df = pd.read_csv(eeg_path, sep='\t', usecols=lambda col: col!='sentence_relative_fix_idx')
+    eeg_data = eeg_df.to_numpy(dtype=np.float64)
+    lower_bound = max(0, lower_bound) 
+    upper_bound = min(upper_bound, len(eeg_data)) #TODO freq: the len(eeg_data) on this line is only correct if a sample rate of 1000Hz is assumed, see eeg sampling weirdness issue.
+    eeg_mean = np.mean(eeg_data[lower_bound:upper_bound, :], axis=0)
+    return (word, eeg_mean)
+
 
 
 def get_input_from_list(accepted_input, msg=None):
@@ -156,10 +200,12 @@ if __name__ == '__main__':
 1. Plot the ET feature related, per-subject, median-relative EEG means for a given task.
 2. Compute and show a histogram of the distribution of TRT values for a given task. 
 3. Plot mean EEG data for TRT ranges.
+4. Plot the mean activation between 200-400ms of each language-relevant electrode for words fixated longer than 400ms against the word's frequency.
+5. Plot the word frequency distribution of the whole dataset.
 '''
-    option = int(get_input_from_list(['1', '2', '3'], msg))    
+    option = get_input_from_list(['1', '2', '3', '4', '5', 'DEBUG'], msg)
     
-    if option==1:
+    if option=='1':
         task = get_input_from_list(['NR', 'TSR'], 'Plot for which task? "NR" or "TSR":\n')
         et_feature = get_input_from_list(ET_FEATURES+['all'], f'Plot for which feature? One of {ET_FEATURES+["all"]}:\n')
         subject_list = get_subjects_list()
@@ -182,7 +228,7 @@ if __name__ == '__main__':
             generate_median_relative_mean_plots_for_subject(task, subject, et_feature)
             print('Finished')
     
-    elif option==2:
+    elif option=='2':
         task = get_input_from_list(['NR', 'TSR'], 'Plot for which task? "NR" or "TSR":\n')
         data_path=EXTRACTED_DATA_PATH+'extracted_data_'+task+'/data.tsv'
         data_df = pd.read_csv(data_path, sep='\t')
@@ -193,11 +239,72 @@ if __name__ == '__main__':
         plt.title(f'Histogram of TRT values for task {task}')
         plt.show()
     
-    elif option==3:
+    elif option=='3':
         task = get_input_from_list(['NR', 'TSR'], 'Plot for which task? "NR" or "TSR":\n')
         lower_bound = 0
         for trt_range in TRT_RANGES:
             print(f'Plotting for TRT values {lower_bound}-{trt_range[0]}ms...')
-            generate_trt_statistic(lower_bound, trt_range[0], trt_range[1], task)
+            generate_mean_eeg_plots_for_trt_range(lower_bound, trt_range[0], trt_range[1], task)
             lower_bound=trt_range[0]
         print('Done')
+    
+    elif option=='4':
+        lower_trt_bound = 200
+        upper_trt_bound = 400
+        task = get_input_from_list(['NR', 'TSR'], 'Plot for which task? ("NR" or "TSR"):\n')
+        task_folder = f'{EXTRACTED_DATA_PATH}extracted_data_{task}'
+        high_df = pd.read_csv(f'{task_folder}/data.tsv', sep='\t')
+        relevant_df = high_df[ (high_df['TRT']>=400) & (~high_df['content'].isna()) ] [['subject', 'sentence_id', 'word_idx', 'content', 'TRT']]
+        print('Gathering and processing data...')
+        with mp.Pool() as pool:
+            words_and_means = pool.map(helper_get_eeg_mean_data_in_trt_range_for_word, 
+                                       zip( relevant_df['content'], [task for _ in range(relevant_df.shape[0])], relevant_df['subject'], 
+                                            relevant_df['sentence_id'], relevant_df['word_idx'], 
+                                            [lower_trt_bound for _ in range(relevant_df.shape[0])], [upper_trt_bound for _ in range(relevant_df.shape[0])]) )
+        print('Arranging data...')
+        wfreqs = []
+        means = []
+        for wm in words_and_means:
+            if wm is None:
+                continue
+            wfreqs.append(word_frequency(wm[0], 'en'))
+            means.append(np.expand_dims(wm[1], axis=0))
+        means=np.concatenate(means, axis=0)
+        for channel in LANGUAGE_CHANNELS:
+            print(f'Generating plot for E{channel}...')
+            channel_idx = device_channel_to_data_channel(channel)
+            plt.figure(figsize=(10, 6))
+            plt.plot(means[:, channel_idx], wfreqs, '.b') # plot with blue dots
+            plt.xlabel(f'Activation of E{channel} (µV)')
+            plt.ylabel('Word frequency')
+            plt.title(f'Word frequency vs. E{channel} activation graph')
+            plt.savefig(f'{EXTRACTED_DATA_PATH}extracted_data_{task}/wordfreq_vs_E{channel}_mean_for_TRT{lower_trt_bound}-{upper_trt_bound}.png', format='png', dpi=1200)
+            plt.close()
+        print('Done')
+    
+    elif option=='5':
+        task = get_input_from_list(['NR', 'TSR'], 'Plot for which task? ("NR" or "TSR"):\n')
+        df = pd.read_csv(f'{EXTRACTED_DATA_PATH}extracted_data_{task}/data.tsv', sep='\t')
+        df = df[ ~df['content'].isna() ]
+        freqdict = {}
+        for word in df['content']:
+            freq = word_frequency(word, 'en')
+            if freq not in freqdict:
+                freqdict[freq]=1
+            else:
+                freqdict[freq]+=1
+        xfreq = []
+        ycount = []
+        for freq in freqdict:
+            xfreq.append(freq)
+            ycount.append(freqdict[freq])
+        plt.figure(figsize=(10, 6))
+        plt.plot(xfreq, ycount, '.b') # plot with blue dots
+        plt.xlabel(f'Word frequency')
+        plt.ylabel('Number of occurences')
+        plt.title(f'Word frequency vs. word frequency occurence count graph')
+        plt.show()
+        plt.close()
+    
+    elif option == 'DEBUG':
+        pass
