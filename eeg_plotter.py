@@ -277,7 +277,7 @@ if __name__ == '__main__':
             plt.plot(means[:, channel_idx], wfreqs, '.b') # plot with blue dots
             plt.xlabel(f'Activation of E{channel} (µV)')
             plt.ylabel('Word frequency')
-            plt.title(f'Word frequency vs. E{channel} activation graph')
+            plt.title(f'Word frequency vs. E{channel} mean activation ({lower_trt_bound}-{upper_trt_bound}ms) graph')
             plt.savefig(f'{EXTRACTED_DATA_PATH}extracted_data_{task}/wordfreq_vs_E{channel}_mean_for_TRT{lower_trt_bound}-{upper_trt_bound}.png', format='png', dpi=1200)
             plt.close()
         print('Done')
