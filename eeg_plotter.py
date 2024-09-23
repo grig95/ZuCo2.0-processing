@@ -8,6 +8,8 @@ import multiprocessing as mp
 import gc
 from wordfreq import word_frequency
 
+from commons import get_input_from_list
+
 from reader import EXTRACTED_DATA_PATH
 from reader import EEG_CHANNEL_COUNT
 from reader import MISSING_DATA_SYMBOL
@@ -183,16 +185,6 @@ def helper_get_eeg_mean_data_in_trt_range_for_word(args):
     upper_bound = min(upper_bound, len(eeg_data)) #TODO freq: the len(eeg_data) on this line is only correct if a sample rate of 1000Hz is assumed, see eeg sampling weirdness issue.
     eeg_mean = np.mean(eeg_data[lower_bound:upper_bound, :], axis=0)
     return (word, eeg_mean)
-
-
-
-def get_input_from_list(accepted_input, msg=None):
-    if msg is None:
-        msg = f'Choose one from {accepted_input}:\n'
-    val = None
-    while val not in accepted_input:
-        val = input(msg)
-    return val
 
 
 if __name__ == '__main__':

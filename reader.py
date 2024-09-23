@@ -6,6 +6,8 @@ from tqdm import tqdm
 import data_loading_helpers as dh
 import multiprocessing as mp
 
+from commons import get_input_from_list
+
 MAX_SIMULTANEOUS_SUBJECTS_TO_PROCESS = 5
 
 EXTRACTED_DATA_PATH = './'
@@ -213,10 +215,9 @@ def process_file(file, eeg_path):
 
 
 if __name__ == '__main__':
-
-    task = 'none'
-    while task not in ['NR', 'TSR']:
-        task = input('Pick a task to extract ("NR" or "TSR"):\n')
+    task = get_input_from_list(['NR', 'TSR'], 'Pick a task to extract ("NR" or "TSR"):\n')
+    extract_basic = get_input_from_list(['y', 'n'], '(Re)extract "basic" data? (y/n):\n')
+    extract_eeg = get_input_from_list(['y', 'n'], '(Re)extract eeg data? (y/n):\n')
 
     exception_log = open('exception_log.txt', 'w')
 
@@ -228,27 +229,29 @@ if __name__ == '__main__':
         os.mkdir(extraction_path)
 
     # extracting 'basic' data (TODO: find a better name)
-    all_items = []
-    for file in all_files:
-        all_items.append(pd.DataFrame(get_basic_data_from_file(file)))
-    basic_data_df = pd.concat(all_items, ignore_index=True)
-    basic_data_df.to_csv(extraction_path+"/data.tsv", sep='\t', index=False)
-    print('Finished extracting basic data.')
+    if extract_basic == 'y':
+        all_items = []
+        for file in all_files:
+            all_items.append(pd.DataFrame(get_basic_data_from_file(file)))
+        basic_data_df = pd.concat(all_items, ignore_index=True)
+        basic_data_df.to_csv(extraction_path+"/data.tsv", sep='\t', index=False)
+        print('Finished extracting basic data.')
 
     # extracting eeg data
-    eeg_path = extraction_path+'/eeg_data'
-    if not os.path.exists(eeg_path):
-        os.mkdir(eeg_path)
-    procs = []
-    for file in all_files:
-        procs.append(mp.Process(target=process_file, args=(file, eeg_path), name=get_subject(file)))
-    index = 0
-    while index < len(procs):
-        batch_size = min(len(procs)-index, MAX_SIMULTANEOUS_SUBJECTS_TO_PROCESS)
-        for i in range(batch_size):
-            procs[index+i].start()
-            print(f'Processing data for subject {procs[index+i].name}')
-        for i in range(batch_size):
-            procs[index+i].join()
-            print(f'Finished processing data for subject {procs[index+i].name}')
-        index+=batch_size
+    if extract_eeg == 'y':
+        eeg_path = extraction_path+'/eeg_data'
+        if not os.path.exists(eeg_path):
+            os.mkdir(eeg_path)
+        procs = []
+        for file in all_files:
+            procs.append(mp.Process(target=process_file, args=(file, eeg_path), name=get_subject(file)))
+        index = 0
+        while index < len(procs):
+            batch_size = min(len(procs)-index, MAX_SIMULTANEOUS_SUBJECTS_TO_PROCESS)
+            for i in range(batch_size):
+                procs[index+i].start()
+                print(f'Processing data for subject {procs[index+i].name}')
+            for i in range(batch_size):
+                procs[index+i].join()
+                print(f'Finished processing data for subject {procs[index+i].name}')
+            index+=batch_size
