@@ -5,6 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 import data_loading_helpers as dh
 import multiprocessing as mp
+import nltk
 
 from commons import get_input_from_list
 
@@ -213,6 +214,21 @@ def process_file(file, eeg_path):
                     #exception_log.write(msg)
 
 
+def pos_augument_basic_data(data_df):
+    '''
+    Auguments the basic-data dataframe with a part-of-speech-column.
+    '''
+    reference_subject = get_subjects_list()[0] # the sentences are identical for all subjects, so only one needs to be processed
+    subject_df = data_df[ data_df['subject']==reference_subject ]
+    tags = {}
+    for sentence_id in pd.unique(subject_df['sentence_id']):
+        sentence_df = subject_df[ subject_df['sentence_id']==sentence_id ] [ ['task', 'sentence', 'sentence_id', 'content', 'word_idx'] ]
+        tagged_words = nltk.pos_tag(sentence_df['content'].to_list())
+        tags[sentence_id] = [t[1] for t in tagged_words]
+    data_df['part_of_speech'] = data_df.apply(lambda row: tags[row['sentence_id']][row['word_idx']], axis=1)
+    return data_df 
+    
+
 
 if __name__ == '__main__':
     task = get_input_from_list(['NR', 'TSR'], 'Pick a task to extract ("NR" or "TSR"):\n')
@@ -234,6 +250,7 @@ if __name__ == '__main__':
         for file in all_files:
             all_items.append(pd.DataFrame(get_basic_data_from_file(file)))
         basic_data_df = pd.concat(all_items, ignore_index=True)
+        basic_data_df = pos_augument_basic_data(basic_data_df)
         basic_data_df.to_csv(extraction_path+"/data.tsv", sep='\t', index=False)
         print('Finished extracting basic data.')
 
