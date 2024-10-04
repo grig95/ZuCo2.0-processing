@@ -60,6 +60,20 @@ def channel_fill(data, missing_channels = MISSING_CHANNELS):
     return result
 
 
+def eeg_data_pad_to_len(data, length, padding='mean'):
+    if length <= len(data):
+        return data[:length, :]
+    padded = np.empty((length, data.shape[1]), dtype=np.float64)
+    padded[:data.shape[0], :] = data
+    if padding == 'mean':
+        padded[data.shape[0]:, :] = np.mean(data, axis=0)
+    elif padding == 0:
+        padded[data.shape[0]:, :] = 0
+    else:
+        raise Exception(f'only "mean" or 0 padding accepted, got {padding}')
+    return padded
+
+
 def get_evoked_for_eeg_data(eeg_data, frequency=500): # TODO freq: The frequency argument is only here to circumvent the weird sample count relative to TRT in the generate_trt_statistic function. Remove/do something with it once you figure out what's going on.
     '''
     Takes in a (105,) or (n, 105) shaped numpy array and returns the associated evoked object for plotting.
@@ -132,12 +146,7 @@ def helper_get_len_normalized_raw_eeg(args):
     raw_eeg = get_raw_word_eeg((task, subject, sentence_id, word_idx))
     if raw_eeg is None:
         return None
-    result = np.empty((target_length, raw_eeg.shape[1]), dtype=np.float64)
-    min_len = min(target_length, raw_eeg.shape[0])
-    result[:min_len, :] = raw_eeg[:min_len, :]
-    if min_len < target_length:
-        result[min_len:, :] = np.mean(raw_eeg, axis=0)
-    return result
+    return eeg_data_pad_to_len(raw_eeg, target_length, padding='mean')
 
 
 def generate_mean_eeg_plots_for_trt_range(lower_bound, upper_bound, time_step, task):
