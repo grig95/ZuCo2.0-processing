@@ -50,12 +50,12 @@ def channel_fill(data, missing_channels = MISSING_CHANNELS):
     if len(data.shape)==1:
         if len(missing_channels)>23: # TODO: remove these two lines once the missing channels issue is resolved
             data=data[:-1]
-        result = np.full(128, MISSING_DATA_SYMBOL, dtype=np.float64)
+        result = np.full(128, 0, dtype=np.float64)
         result[mask] = data
     else: # (n, 105) shaped array
         if len(missing_channels)>23: # TODO: remove these two lines once the missing channels issue is resolved
             data=data[:, :-1]
-        result = np.full((data.shape[0], 128), MISSING_DATA_SYMBOL, dtype=np.float64)
+        result = np.full((data.shape[0], 128), 0, dtype=np.float64)
         result[:, mask] = data
     return result
 
