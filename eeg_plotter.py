@@ -7,6 +7,7 @@ from tqdm import tqdm
 import multiprocessing as mp
 import gc
 from wordfreq import word_frequency
+from wordfreq import zipf_frequency
 
 from commons import get_input_from_list
 
@@ -202,7 +203,7 @@ if __name__ == '__main__':
 2. Compute and show a histogram of the distribution of TRT values for a given task. 
 3. Plot mean EEG data for TRT ranges.
 4. Plot the mean activation between 200-400ms of each language-relevant electrode for words fixated longer than 400ms against the word's frequency.
-5. Plot the word frequency distribution of the whole dataset.
+5. Plot the word frequency distribution of a given task.
 '''
     option = get_input_from_list(['1', '2', '3', '4', '5', 'DEBUG'], msg)
     
@@ -284,18 +285,20 @@ if __name__ == '__main__':
         print('Done')
     
     elif option=='5':
-        data_path=f'{EXTRACTED_DATA_PATH}extracted_data_NR/data.tsv'
+        task = get_input_from_list(['NR', 'TSR'], 'Plot for which task? "NR" or "TSR":\n')
+        data_path=f'{EXTRACTED_DATA_PATH}extracted_data_{task}/data.tsv'
         if not os.path.exists(data_path):
-            if os.path.exists(f'{EXTRACTED_DATA_PATH}extracted_data_TSR/data.tsv'):
-                data_path = f'{EXTRACTED_DATA_PATH}extracted_data_TSR/data.tsv'
-            else:
-                print('Error: extracted data not found.')
-                exit()
+            print('Error: extracted data not found.')
+            exit()
+        freqfunc = get_input_from_list(["normal", "zipf"], 'Use which frequency function? ("normal" or "zipf"):\n')
         df = pd.read_csv(data_path, sep='\t')
         df = df[ ~df['content'].isna() ]
         freqs = []
         for word in df['content']:
-            freqs.append(word_frequency(word, 'en'))
+            if freqfunc == 'zipf':
+                freqs.append(zipf_frequency(word, 'en'))
+            elif freqfunc == 'normal':
+                freqs.append(word_frequency(word, 'en'))
         plt.hist(freqs, bins=100)
         plt.show()
         plt.close()
